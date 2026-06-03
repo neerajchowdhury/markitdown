@@ -122,12 +122,34 @@ def _write_minimal_pptx(path: Path) -> None:
 <p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
   <p:cSld>
     <p:spTree>
+      <p:nvGrpSpPr>
+        <p:cNvPr id="0" name=""/>
+        <p:cNvGrpSpPr/>
+        <p:nvPr/>
+      </p:nvGrpSpPr>
+      <p:grpSpPr>
+        <a:xfrm>
+          <a:off x="0" y="0"/>
+          <a:ext cx="0" cy="0"/>
+          <a:chOff x="0" y="0"/>
+          <a:chExt cx="0" cy="0"/>
+        </a:xfrm>
+      </p:grpSpPr>
       <p:sp>
         <p:nvSpPr>
           <p:cNvPr id="1" name="Title 1"/>
           <p:cNvSpPr/>
           <p:nvPr/>
         </p:nvSpPr>
+        <p:spPr>
+          <a:xfrm>
+            <a:off x="0" y="0"/>
+            <a:ext cx="0" cy="0"/>
+          </a:xfrm>
+          <a:prstGeom prst="rect">
+            <a:avLst/>
+          </a:prstGeom>
+        </p:spPr>
         <p:txBody>
           <a:bodyPr/>
           <a:lstStyle/>

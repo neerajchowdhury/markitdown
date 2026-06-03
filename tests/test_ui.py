@@ -17,6 +17,9 @@ class _FakeElement:
         self.rows = []
         self.text = ""
         self.content = ""
+        self.props_args = []
+        self.clicked = False
+        self.callback = None
 
     def __call__(self, *args, **kwargs):
         return self
@@ -34,9 +37,12 @@ class _FakeElement:
         return self
 
     def props(self, *args, **kwargs):
+        self.props_args.append((args, kwargs))
         return self
 
     def on_click(self, *args, **kwargs):
+        if args:
+            self.callback = args[0]
         return self
 
     def on_value_change(self, *args, **kwargs):
@@ -51,11 +57,34 @@ class _FakeElement:
     def clear(self):
         return None
 
+    def open(self):
+        self.clicked = True
+        return self
+
 
 class _FakeUI:
     """Minimal fake UI surface for render-time page smoke tests."""
 
+    def __init__(self):
+        self.buttons = {}
+        self.dialogs = []
+
     def __getattr__(self, name):
+        if name == "dialog":
+            def _dialog(*args, **kwargs):
+                dialog = _FakeElement()
+                self.dialogs.append(dialog)
+                return dialog
+            return _dialog
+        if name == "button":
+            def _button(label=None, *args, **kwargs):
+                element = _FakeElement()
+                element.label = label
+                if "on_click" in kwargs and kwargs["on_click"] is not None:
+                    element.callback = kwargs["on_click"]
+                self.buttons[label] = element
+                return element
+            return _button
         return _FakeElement()
 
     def timer(self, *args, **kwargs):
@@ -110,3 +139,39 @@ def test_preview_page_renders_without_running_event_loop(monkeypatch):
     monkeypatch.setattr(preview_module, "get_job_queue", lambda: None)
 
     preview_module.preview_page()
+
+
+def test_convert_page_renders_and_wires_import_dialog(monkeypatch):
+    """Convert page should render a clickable import action and dialog."""
+    import markitdesk.ui.convert as convert_module
+
+    fake_ui = _FakeUI()
+    monkeypatch.setattr(convert_module, "ui", fake_ui)
+    monkeypatch.setattr(convert_module, "initialize_job_queue", lambda settings: SimpleNamespace())
+    monkeypatch.setattr(convert_module, "init_db", lambda db_path: None)
+    monkeypatch.setattr(convert_module, "get_or_create_default_project_id", lambda db_path: 1)
+    monkeypatch.setattr(convert_module, "refresh_recipes", lambda recipe_select: None)
+    monkeypatch.setattr("markitdesk.recipes.initialize_recipes", lambda: None)
+
+    convert_module.convert_page()
+
+    assert "Import files or links" in fake_ui.buttons
+    assert fake_ui.dialogs
+
+
+def test_convert_page_shows_url_gate_when_disabled(monkeypatch):
+    """Remote URL controls should render in the gated state when disabled."""
+    import markitdesk.ui.convert as convert_module
+
+    fake_ui = _FakeUI()
+    monkeypatch.setattr(convert_module, "ui", fake_ui)
+    monkeypatch.setattr(convert_module.settings, "allow_remote_urls", False)
+    monkeypatch.setattr(convert_module, "initialize_job_queue", lambda settings: SimpleNamespace())
+    monkeypatch.setattr(convert_module, "init_db", lambda db_path: None)
+    monkeypatch.setattr(convert_module, "get_or_create_default_project_id", lambda db_path: 1)
+    monkeypatch.setattr(convert_module, "refresh_recipes", lambda recipe_select: None)
+    monkeypatch.setattr("markitdesk.recipes.initialize_recipes", lambda: None)
+
+    convert_module.convert_page()
+
+    assert fake_ui.buttons["Import files or links"].callback is not None
