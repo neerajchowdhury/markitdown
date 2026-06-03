@@ -1,0 +1,412 @@
+"""Deterministic Markdown chunking utilities for RAG exports."""
+
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import List, Optional, Dict, Any
+from enum import Enum
+
+
+class ChunkingStrategy(Enum):
+    """Available chunking strategies."""
+    BY_HEADING = "by_heading"
+    BY_TOKEN_WINDOW = "by_token_window"
+
+
+@dataclass
+class Chunk:
+    """A chunk of Markdown text with associated metadata."""
+    content: str
+    source_file: str
+    chunk_id: int
+    heading_path: List[str]
+    token_estimate: int
+    start_index: int
+    end_index: int
+    chunk_index: int  # Index within the chunked document
+
+
+@dataclass
+class ChunkingResult:
+    """Result of chunking a Markdown document."""
+    chunks: List[Chunk]
+    total_chunks: int
+    total_tokens_estimated: int
+
+
+def _estimate_tokens(text: str) -> int:
+    """
+    Estimate the number of tokens in text.
+    Using rough approximation: 0.75 tokens per word for English.
+    
+    Args:
+        text: Text to estimate tokens for
+        
+    Returns:
+        Estimated token count
+    """
+    word_count = len(text.split()) if text.strip() else 0
+    return int(word_count * 0.75)
+
+
+def _extract_heading_path(line: str, current_heading_path: List[str]) -> List[str]:
+    """
+    Extract heading path from a markdown heading line.
+    
+    Args:
+        line: A line that starts with # characters
+        current_heading_path: Current heading path context
+        
+    Returns:
+        Updated heading path
+    """
+    # Count leading # characters to determine heading level
+    level = 0
+    for char in line:
+        if char == '#':
+            level += 1
+        else:
+            break
+    
+    # Extract heading text (remove leading #s and whitespace)
+    heading_text = line[level:].strip()
+    
+    # Update heading path based on level
+    if level <= len(current_heading_path):
+        # Same or higher level - truncate and add new heading
+        return current_heading_path[:level-1] + [heading_text]
+    else:
+        # Deeper level - append new heading
+        return current_heading_path + [heading_text]
+
+
+def _is_likely_table_line(line: str) -> bool:
+    """
+    Check if a line is likely part of a markdown table.
+    
+    Args:
+        line: Line to check
+        
+    Returns:
+        True if line appears to be part of a table
+    """
+    # Simple heuristic: line contains | characters and at least 2 of them
+    return line.count('|') >= 2
+
+
+def _find_table_boundaries(lines: List[str], start_index: int) -> tuple[int, int]:
+    """
+    Find the boundaries of a markdown table starting at or near start_index.
+    
+    Args:
+        lines: List of text lines
+        start_index: Index to start looking for table
+        
+    Returns:
+        Tuple of (table_start_index, table_end_index_exclusive)
+    """
+    # Look backwards for table start
+    table_start = start_index
+    while table_start > 0:
+        if _is_likely_table_line(lines[table_start]):
+            table_start -= 1
+        else:
+            break
+    table_start += 1  # Move to first actual table line
+    
+    # Look forwards for table end
+    table_end = table_start
+    while table_end < len(lines):
+        if not _is_likely_table_line(lines[table_end]):
+            break
+        table_end += 1
+    
+    return table_start, table_end
+
+
+def chunk_markdown(
+    text: str, 
+    source_metadata: Dict[str, Any],
+    strategy: ChunkingStrategy = ChunkingStrategy.BY_HEADING,
+    max_tokens: int = 500
+) -> ChunkingResult:
+    """
+    Chunk Markdown text according to the specified strategy.
+    
+    Args:
+        text: Markdown text to chunk
+        source_metadata: Metadata about the source file (should include source_file)
+        strategy: Chunking strategy to use
+        max_tokens: Maximum tokens per chunk
+        
+    Returns:
+        ChunkingResult containing list of chunks
+    """
+    if strategy == ChunkingStrategy.BY_HEADING:
+        return _chunk_by_heading(text, source_metadata, max_tokens)
+    elif strategy == ChunkingStrategy.BY_TOKEN_WINDOW:
+        return _chunk_by_token_window(text, source_metadata, max_tokens)
+    else:
+        raise ValueError(f"Unknown chunking strategy: {strategy}")
+
+
+def _chunk_by_heading(
+    text: str, 
+    source_metadata: Dict[str, Any],
+    max_tokens: int
+) -> ChunkingResult:
+    """
+    Chunk markdown by headings, preserving heading context.
+    
+    Args:
+        text: Markdown text to chunk
+        source_metadata: Metadata about the source file
+        max_tokens: Maximum tokens per chunk
+        
+    Returns:
+        ChunkingResult containing list of chunks
+    """
+    lines = text.split('\n')
+    
+    # Parse document into blocks: each block starts with a heading and includes
+    # all content until the next heading of the same or higher level
+    blocks = []
+    current_block_lines = []
+    current_heading_path = []
+    current_block_start = 0
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        
+        # Check if this line is a heading
+        heading_level = 0
+        if line.startswith('#'):
+            for char in line:
+                if char == '#':
+                    heading_level += 1
+                else:
+                    break
+            # Valid heading if there's a space after the #s
+            if heading_level > 0 and len(line) > heading_level and line[heading_level] == ' ':
+                heading_text = line[heading_level+1:].strip()
+                
+                # If we have accumulated content for a block, save it
+                if current_block_lines:
+                    block_content = '\n'.join(current_block_lines)
+                    blocks.append({
+                        'lines': current_block_lines.copy(),
+                        'content': block_content,
+                        'heading_path': list(current_heading_path),
+                        'start_index': current_block_start,
+                        'end_index': i
+                    })
+                
+                # Start new block with this heading
+                current_block_lines = [line]
+                current_block_start = i
+                
+                # Update heading path
+                if heading_level <= len(current_heading_path):
+                    # Same or higher level - truncate and add new heading
+                    current_heading_path = current_heading_path[:heading_level-1] + [heading_text]
+                else:
+                    # Deeper level - append new heading
+                    current_heading_path.append(heading_text)
+            else:
+                # Not a valid heading, treat as regular content
+                current_block_lines.append(line)
+        else:
+            # Not a heading, add to current block
+            current_block_lines.append(line)
+        
+        i += 1
+    
+    # Don't forget the last block
+    if current_block_lines:
+        block_content = '\n'.join(current_block_lines)
+        blocks.append({
+            'lines': current_block_lines.copy(),
+            'content': block_content,
+            'heading_path': list(current_heading_path),
+            'start_index': current_block_start,
+            'end_index': len(lines)
+        })
+    
+    # If no blocks were found (no headings), treat entire text as one block
+    if not blocks:
+        blocks.append({
+            'lines': lines,
+            'content': text,
+            'heading_path': [],
+            'start_index': 0,
+            'end_index': len(lines)
+        })
+    
+    # Now group blocks into chunks respecting max_tokens
+    chunks = []
+    current_chunk_lines = []
+    current_chunk_heading_path = []
+    current_chunk_start = 0
+    current_chunk_tokens = 0
+    chunk_index = 0
+    
+    for block in blocks:
+        block_lines = block['lines']
+        block_content = block['content']
+        block_heading_path = block['heading_path']
+        block_start = block['start_index']
+        block_end = block['end_index']
+        block_tokens = _estimate_tokens(block_content)
+        
+        # If adding this block would exceed max_tokens and we already have content,
+        # finalize the current chunk and start a new one
+        if current_chunk_tokens + block_tokens > max_tokens and current_chunk_lines:
+            # Create chunk from accumulated content
+            chunk_content = '\n'.join(current_chunk_lines)
+            chunk = Chunk(
+                content=chunk_content,
+                source_file=source_metadata.get('source_file', 'unknown'),
+                chunk_id=hash(chunk_content) % 1000000,
+                heading_path=list(current_chunk_heading_path),
+                token_estimate=current_chunk_tokens,
+                start_index=current_chunk_start,
+                end_index=i - len(blocks) + blocks.index(block),  # Approximate line index
+                chunk_index=chunk_index
+            )
+            chunks.append(chunk)
+            chunk_index += 1
+            
+            # Start new chunk with this block
+            current_chunk_lines = block_lines.copy()
+            current_chunk_heading_path = block_heading_path.copy()
+            current_chunk_start = block_start
+            current_chunk_tokens = block_tokens
+        else:
+            # Add block to current chunk
+            current_chunk_lines.extend(block_lines)
+            # For heading path, use the most specific (longest) path seen in the chunk
+            if len(block_heading_path) > len(current_chunk_heading_path):
+                current_chunk_heading_path = block_heading_path.copy()
+            current_chunk_tokens += block_tokens
+    
+    # Handle remaining content
+    if current_chunk_lines:
+        chunk_content = '\n'.join(current_chunk_lines)
+        chunk = Chunk(
+            content=chunk_content,
+            source_file=source_metadata.get('source_file', 'unknown'),
+            chunk_id=hash(chunk_content) % 1000000,
+            heading_path=list(current_chunk_heading_path),
+            token_estimate=current_chunk_tokens,
+            start_index=current_chunk_start,
+            end_index=len(lines),
+            chunk_index=chunk_index
+        )
+        chunks.append(chunk)
+    
+    # Calculate totals
+    total_chunks = len(chunks)
+    total_tokens_estimated = sum(chunk.token_estimate for chunk in chunks)
+    
+    return ChunkingResult(
+        chunks=chunks,
+        total_chunks=total_chunks,
+        total_tokens_estimated=total_tokens_estimated
+    )
+
+
+def _chunk_by_token_window(
+    text: str, 
+    source_metadata: Dict[str, Any],
+    max_tokens: int
+) -> ChunkingResult:
+    """
+    Chunk markdown using a sliding token window approach.
+    
+    Args:
+        text: Markdown text to chunk
+        source_metadata: Metadata about the source file
+        max_tokens: Maximum tokens per chunk
+        
+    Returns:
+        ChunkingResult containing list of chunks
+    """
+    lines = text.split('\n')
+    chunks = []
+    
+    current_chunk_lines = []
+    current_token_count = 0
+    current_start_index = 0
+    chunk_index = 0
+    current_heading_path = []
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        line_tokens = _estimate_tokens(line)
+        
+        # Check if adding this line would exceed max_tokens
+        if current_token_count + line_tokens > max_tokens and current_chunk_lines:
+            # Create chunk from current content
+            chunk_content = '\n'.join(current_chunk_lines)
+            chunk = Chunk(
+                content=chunk_content,
+                source_file=source_metadata.get('source_file', 'unknown'),
+                chunk_id=hash(chunk_content) % 1000000,
+                heading_path=list(current_heading_path),
+                token_estimate=current_token_count,
+                start_index=current_start_index,
+                end_index=i,
+                chunk_index=chunk_index
+            )
+            chunks.append(chunk)
+            chunk_index += 1
+            
+            # Reset for next chunk
+            current_chunk_lines = []
+            current_token_count = 0
+            current_start_index = i
+            
+            # Re-evaluate heading path for the new chunk
+            # We need to look backwards to find the most recent heading
+            current_heading_path = []
+            for j in range(i-1, max(-1, i-100), -1):  # Look back up to 100 lines
+                if j >= 0 and lines[j].startswith('#') and len(lines[j]) > 1 and lines[j][1] == ' ':
+                    current_heading_path = _extract_heading_path(lines[j], [])
+                    break
+        
+        # Add line to current chunk
+        current_chunk_lines.append(line)
+        current_token_count += line_tokens
+        
+        # Update heading path if this line is a heading
+        if line.startswith('#') and len(line) > 1 and line[1] == ' ':
+            current_heading_path = _extract_heading_path(line, current_heading_path)
+        
+        i += 1
+    
+    # Handle remaining content
+    if current_chunk_lines:
+        chunk_content = '\n'.join(current_chunk_lines)
+        chunk = Chunk(
+            content=chunk_content,
+            source_file=source_metadata.get('source_file', 'unknown'),
+            chunk_id=hash(chunk_content) % 1000000,
+            heading_path=list(current_heading_path),
+            token_estimate=current_token_count,
+            start_index=current_start_index,
+            end_index=len(lines),
+            chunk_index=chunk_index
+        )
+        chunks.append(chunk)
+    
+    # Calculate totals
+    total_chunks = len(chunks)
+    total_tokens_estimated = sum(chunk.token_estimate for chunk in chunks)
+    
+    return ChunkingResult(
+        chunks=chunks,
+        total_chunks=total_chunks,
+        total_tokens_estimated=total_tokens_estimated
+    )

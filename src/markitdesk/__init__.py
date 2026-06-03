@@ -1,0 +1,1 @@
+"""MarkItDesk - Local-first GUI wrapper around Microsoft MarkItDown."""
