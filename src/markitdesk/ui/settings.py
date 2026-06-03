@@ -15,17 +15,19 @@ def settings_page() -> None:
             with ui.row().classes("w-full items-start justify-between gap-4"):
                 with ui.column().classes("gap-2 max-w-3xl"):
                     ui.label("Settings").classes("text-sm font-semibold uppercase tracking-[0.22em] text-slate-400")
-                    ui.label("Tune the local workspace and security posture.").classes("text-4xl font-black tracking-tight text-white")
-                    ui.label("The app stays local-first by default. These controls make the current security envelope explicit.").classes("text-base text-slate-300")
+                    ui.label("Choose where files are stored and which features are allowed.").classes("text-4xl font-black tracking-tight text-white")
+                    ui.label("These settings control where MarkItDesk reads and writes files, plus whether optional features like URL ingestion are available.").classes("text-base text-slate-300")
                 ui.badge("Security-sensitive").props("outline")
 
         with ui.card().classes("w-full p-5 border border-white/10").style("background: rgba(15,23,42,.82);"):
             ui.label("Workspace").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
+            ui.label("These folders decide where your input files are read from and where converted Markdown is written.").classes("text-sm text-slate-300 mt-1")
             _setting_row("Workspace Root", str(settings.workspace_root), "folder_open")
             _setting_row("Output Root", str(settings.output_root), "folder")
 
         with ui.card().classes("w-full p-5 border border-white/10").style("background: rgba(15,23,42,.82);"):
             ui.label("Limits").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
+            ui.label("This is the largest file size the app will accept. Bigger files are blocked before conversion starts.").classes("text-sm text-slate-300 mt-1")
             with ui.row().classes("items-center gap-3 mt-3"):
                 ui.icon('storage').classes('text-xl text-slate-300')
                 ui.label('Max file size (MB)').classes('text-white')
@@ -33,15 +35,16 @@ def settings_page() -> None:
 
         with ui.card().classes("w-full p-5 border border-white/10").style("background: rgba(15,23,42,.82);"):
             ui.label("Features").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
+            ui.label("Turn these on only if you understand the tradeoff. Each switch changes what the app is allowed to do.").classes("text-sm text-slate-300 mt-1")
             with ui.column().classes('space-y-3 mt-3'):
-                ui.switch('Enable plugins', value=settings.allow_plugins, on_change=lambda e: handle_plugins_change(e.value)).classes('text-sm')
-                ui.label('Plugins can execute code. Only enable if you trust the plugin source.').classes('text-xs text-slate-400')
+                ui.switch('Allow plugins', value=settings.allow_plugins, on_change=lambda e: handle_plugins_change(e.value)).classes('text-sm')
+                ui.label('Lets the app load plugin code. Leave this off unless you trust the source.').classes('text-xs text-slate-400')
 
-                ui.switch('Enable remote URLs', value=settings.allow_remote_urls, on_change=lambda e: handle_remote_urls_change(e.value)).classes('text-sm')
-                ui.label('Allows processing files from the internet. May pose security risks.').classes('text-xs text-slate-400')
+                ui.switch('Allow remote URLs', value=settings.allow_remote_urls, on_change=lambda e: handle_remote_urls_change(e.value)).classes('text-sm')
+                ui.label('Lets you import files from links on the internet. Turn this on only when needed.').classes('text-xs text-slate-400')
 
-                ui.switch('Enable AI enrichment', value=settings.allow_ai_enrichment, on_change=lambda e: handle_ai_enrichment_change(e.value)).classes('text-sm')
-                ui.label('Requires external AI services. Keeps raw output separate from enriched output.').classes('text-xs text-slate-400')
+                ui.switch('Allow AI enrichment', value=settings.allow_ai_enrichment, on_change=lambda e: handle_ai_enrichment_change(e.value)).classes('text-sm')
+                ui.label('Adds optional AI-assisted output. The original Markdown stays separate.').classes('text-xs text-slate-400')
 
 
 def _setting_row(label_text, value_text, icon_name):
@@ -50,7 +53,7 @@ def _setting_row(label_text, value_text, icon_name):
         with ui.column().classes("flex-1 gap-1"):
             ui.label(label_text).classes("text-sm text-white")
             ui.input(value=value_text, on_change=lambda e: None).props('readonly').classes('w-full')
-        ui.button('Change', on_click=lambda: ui.notify('Not implemented yet')).props('outline size=sm')
+        ui.button('Change', on_click=lambda: ui.notify('Changing these folders is not implemented yet.')).props('outline size=sm')
 
 
 def handle_max_file_size_change(value):

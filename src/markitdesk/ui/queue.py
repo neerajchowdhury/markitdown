@@ -92,28 +92,30 @@ def queue_page() -> None:
             with ui.row().classes("w-full items-start justify-between gap-4"):
                 with ui.column().classes("gap-2 max-w-3xl"):
                     ui.label("Queue").classes("text-sm font-semibold uppercase tracking-[0.22em] text-slate-400")
-                    ui.label("Monitor and recover work in progress.").classes("text-4xl font-black tracking-tight text-white")
-                    ui.label("The queue shows each file, its output, quality score, and failure context so operators can act quickly.").classes("text-base text-slate-300")
+                    ui.label("See what is converting right now and what finished successfully.").classes("text-4xl font-black tracking-tight text-white")
+                    ui.label("Use this page to check progress, retry failed files, cancel pending ones, and export completed results.").classes("text-base text-slate-300")
                 with ui.column().classes("gap-2"):
                     ui.label("Exports").classes("text-sm font-semibold uppercase tracking-[0.2em] text-slate-400")
+                    ui.label("Download the finished Markdown as a ZIP, JSONL, or CSV list.").classes("text-xs text-slate-300")
                     with ui.row().classes("items-center gap-2"):
-                        ui.button('ZIP', on_click=lambda: asyncio.create_task(export_as_zip())).props('outline size=sm')
-                        ui.button('JSONL', on_click=lambda: asyncio.create_task(export_as_jsonl())).props('outline size=sm')
-                        ui.button('CSV', on_click=lambda: asyncio.create_task(export_as_csv())).props('outline size=sm')
+                        ui.button('Download ZIP', on_click=lambda: asyncio.create_task(export_as_zip())).props('outline size=sm')
+                        ui.button('Download JSONL', on_click=lambda: asyncio.create_task(export_as_jsonl())).props('outline size=sm')
+                        ui.button('Download CSV', on_click=lambda: asyncio.create_task(export_as_csv())).props('outline size=sm')
 
         with ui.card().classes("w-full p-5 border border-white/10").style("background: rgba(15,23,42,.82);"):
             with ui.row().classes("w-full justify-between gap-4 flex-wrap"):
                 with ui.column():
                     ui.label("Queue status").classes("text-lg font-semibold text-white")
-                    status_summary = ui.label('Loading...').classes('text-slate-300')
-                    progress_label = ui.label('Progress: 0/0').classes('text-slate-300')
+                    status_summary = ui.label('Loading queue status...').classes('text-slate-300')
+                    progress_label = ui.label('No jobs yet').classes('text-slate-300')
                     progress_bar = ui.linear_progress(value=0).classes('w-full mt-2')
                 with ui.column().classes("min-w-72"):
                     ui.label("Control").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
+                    ui.label("Pick one file here if you want to retry or cancel it.").classes("text-xs text-slate-300 mt-1")
                     with ui.row().classes("items-center gap-2 mt-2"):
-                        job_selector = ui.select(options={}, label='Select job').classes('min-w-96')
-                        ui.button('Retry failed', on_click=lambda: asyncio.create_task(retry_selected_job())).props('outline size=sm')
-                        ui.button('Cancel pending', on_click=lambda: asyncio.create_task(cancel_selected_job())).props('outline size=sm')
+                        job_selector = ui.select(options={}, label='Choose a file').classes('min-w-96')
+                        ui.button('Retry selected', on_click=lambda: asyncio.create_task(retry_selected_job())).props('outline size=sm')
+                        ui.button('Cancel selected', on_click=lambda: asyncio.create_task(cancel_selected_job())).props('outline size=sm')
             ui.separator().classes("my-4 bg-white/10")
             ui.label("Job table").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400 mb-2")
             table = ui.table(
@@ -129,7 +131,7 @@ def queue_page() -> None:
             ).classes('w-full')
 
             with ui.row().classes('justify-end mt-4'):
-                refresh_button = ui.button('Refresh queue', on_click=lambda: asyncio.create_task(refresh_queue())).props('outline')
+                refresh_button = ui.button('Refresh list', on_click=lambda: asyncio.create_task(refresh_queue())).props('outline')
         
         async def refresh_queue():
             """Refresh the queue data from the database."""

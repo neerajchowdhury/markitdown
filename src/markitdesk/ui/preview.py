@@ -37,13 +37,14 @@ def preview_page() -> None:
             with ui.row().classes("w-full items-start justify-between gap-4"):
                 with ui.column().classes("gap-2 max-w-3xl"):
                     ui.label("Preview").classes("text-sm font-semibold uppercase tracking-[0.22em] text-slate-400")
-                    ui.label("Inspect the converted Markdown exactly as it was written.").classes("text-4xl font-black tracking-tight text-white")
-                    ui.label("Switch between raw markdown, rendered output, and an outline to verify structure at a glance.").classes("text-base text-slate-300")
+                    ui.label("Read the converted Markdown and check whether it looks right.").classes("text-4xl font-black tracking-tight text-white")
+                    ui.label("Choose a completed file to see the raw text, the rendered version, and a simple outline of headings.").classes("text-base text-slate-300")
                 with ui.row().classes("items-center gap-2"):
-                    ui.button("Refresh jobs", on_click=lambda: asyncio.create_task(refresh_job_list())).props("outline")
+                    ui.button("Refresh list", on_click=lambda: asyncio.create_task(refresh_job_list())).props("outline")
 
         with ui.card().classes("w-full p-5 border border-white/10").style("background: rgba(15,23,42,.82);"):
             ui.label("Job selector").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
+            ui.label("Only completed jobs appear here, because they already have output to preview.").classes("text-sm text-slate-300 mt-1")
             with ui.row().classes("w-full items-center gap-3 mt-3"):
                 job_select = ui.select(
                     label="Recent Jobs",

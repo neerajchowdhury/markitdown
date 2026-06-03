@@ -13,26 +13,26 @@ def dashboard_page() -> None:
             with ui.row().classes("w-full items-start justify-between gap-4"):
                 with ui.column().classes("gap-3 max-w-3xl"):
                     ui.label("Command Center").classes("text-sm font-semibold uppercase tracking-[0.22em] text-slate-400")
-                    ui.label("The workspace that keeps ingestion, review, and export in one place.").classes("text-4xl font-black tracking-tight text-white")
-                    ui.label("MarkItDesk is tuned for local-first document pipelines with clear boundaries, visible outputs, and fast recovery when something fails.").classes("text-base text-slate-300")
+                    ui.label("Turn files into Markdown, then review and export the results.").classes("text-4xl font-black tracking-tight text-white")
+                    ui.label("Use Convert to add files, Queue to watch progress, Preview to check the output, and Settings to choose where files are saved.").classes("text-base text-slate-300")
                 with ui.column().classes("gap-3"):
                     ui.label("Safety posture").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
-                    ui.label("Local-first processing").classes("text-lg font-semibold text-emerald-300")
-                    ui.label("No data leaves your machine by default.").classes("text-sm text-slate-300")
+                    ui.label("Files stay on this computer").classes("text-lg font-semibold text-emerald-300")
+                    ui.label("Nothing is uploaded unless you enable that feature yourself.").classes("text-sm text-slate-300")
 
         with ui.card().classes("w-full p-5 border border-white/10").style("background: rgba(15,23,42,.82);"):
             ui.label("Start here").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
-            ui.label("The shortest path from empty workspace to Markdown output is: import, queue, preview, export.").classes("text-base text-slate-300 mt-1")
+            ui.label("Follow this simple flow: add files, wait for conversion, inspect the Markdown, then export when ready.").classes("text-base text-slate-300 mt-1")
             with ui.row().classes("gap-3 mt-4 flex-wrap"):
-                ui.button("Open Convert", on_click=lambda: navigate_to("Convert")).props("color=primary")
-                ui.button("Open Queue", on_click=lambda: navigate_to("Queue")).props("outline")
-                ui.button("Open Preview", on_click=lambda: navigate_to("Preview")).props("outline")
-                ui.button("Open Settings", on_click=lambda: navigate_to("Settings")).props("outline")
+                ui.button("Add files", on_click=lambda: navigate_to("Convert")).props("color=primary")
+                ui.button("See progress", on_click=lambda: navigate_to("Queue")).props("outline")
+                ui.button("Check output", on_click=lambda: navigate_to("Preview")).props("outline")
+                ui.button("Change settings", on_click=lambda: navigate_to("Settings")).props("outline")
             with ui.row().classes("w-full gap-4 mt-4 flex-wrap"):
-                _path_card("1", "Convert", "Import files, folders, ZIPs, or approved URLs.", "Open Convert")
-                _path_card("2", "Queue", "Watch jobs move through processing and recovery.", "Open Queue")
-                _path_card("3", "Preview", "Inspect the rendered Markdown and quality score.", "Open Preview")
-                _path_card("4", "Settings", "Adjust workspace and security boundaries.", "Open Settings")
+                _path_card("1", "Add files", "Choose the files or folders you want to convert to Markdown.", "Open Convert")
+                _path_card("2", "Watch progress", "See which files are processing, finished, or need attention.", "Open Queue")
+                _path_card("3", "Review output", "Read the converted Markdown and check its quality.", "Open Preview")
+                _path_card("4", "Set options", "Pick where files go and which features are allowed.", "Open Settings")
 
         with ui.row().classes("w-full gap-4 flex-wrap"):
             _stat_card("Workspace", "Locked to configured folders")
@@ -41,10 +41,10 @@ def dashboard_page() -> None:
 
         with ui.card().classes("w-full p-5 border border-white/10").style("background: rgba(15,23,42,.82);"):
             ui.label("Recent Jobs").classes("text-lg font-semibold text-white")
-            ui.label("Nothing has run yet. Use Convert to enqueue content and this area will surface the latest activity.").classes("text-sm text-slate-300 mt-1")
+            ui.label("Your latest conversions will appear here. Start by adding files in Convert.").classes("text-sm text-slate-300 mt-1")
             with ui.column().classes("w-full min-h-36 rounded-2xl border border-dashed border-white/10 mt-4 p-6 items-center justify-center"):
                 ui.icon("hourglass_empty").classes("text-4xl text-slate-500")
-                ui.label("Waiting for your first import").classes("text-slate-300 mt-2")
+                ui.label("No conversions yet").classes("text-slate-300 mt-2")
 
 
 def _stat_card(title: str, value: str):
