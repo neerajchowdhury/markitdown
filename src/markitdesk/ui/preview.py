@@ -30,12 +30,21 @@ def get_preview_job_details(job_id: int) -> Optional[dict]:
 
 def preview_page() -> None:
     """Render the preview page."""
-    with ui.column().classes("w-full max-w-6xl mx-auto p-4"):
-        ui.label("Markdown Preview").classes("text-2xl font-bold mb-4")
+    with ui.column().classes("w-full max-w-7xl mx-auto p-6 gap-6"):
+        with ui.card().classes("w-full p-6 border border-white/10").style(
+            "background: linear-gradient(135deg, rgba(15,23,42,.92), rgba(15,23,42,.72));"
+        ):
+            with ui.row().classes("w-full items-start justify-between gap-4"):
+                with ui.column().classes("gap-2 max-w-3xl"):
+                    ui.label("Preview").classes("text-sm font-semibold uppercase tracking-[0.22em] text-slate-400")
+                    ui.label("Inspect the converted Markdown exactly as it was written.").classes("text-4xl font-black tracking-tight text-white")
+                    ui.label("Switch between raw markdown, rendered output, and an outline to verify structure at a glance.").classes("text-base text-slate-300")
+                with ui.row().classes("items-center gap-2"):
+                    ui.button("Refresh jobs", on_click=lambda: asyncio.create_task(refresh_job_list())).props("outline")
 
-        with ui.card().classes("w-full mb-4"):
-            ui.label("Select Job to Preview").classes("mb-2")
-            with ui.row().classes("w-full items-center"):
+        with ui.card().classes("w-full p-5 border border-white/10").style("background: rgba(15,23,42,.82);"):
+            ui.label("Job selector").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
+            with ui.row().classes("w-full items-center gap-3 mt-3"):
                 job_select = ui.select(
                     label="Recent Jobs",
                     options={},
@@ -46,7 +55,7 @@ def preview_page() -> None:
                     on_click=lambda: asyncio.create_task(refresh_job_list()),
                 ).props("outline size=sm")
 
-        with ui.card().classes("w-full"):
+        with ui.card().classes("w-full p-5 border border-white/10").style("background: rgba(15,23,42,.82);"):
             with ui.tabs().classes("w-full") as preview_tabs:
                 raw_tab = ui.tab("Raw Markdown")
                 rendered_tab = ui.tab("Rendered")
@@ -66,9 +75,9 @@ def preview_page() -> None:
                 with ui.column().classes("w-full p-4"):
                     metadata_grid = ui.grid(columns=2).classes("w-full gap-4")
 
-        with ui.row().classes("w-full justify-between mt-4"):
-            quality_label = ui.label("Quality: N/A").classes("text-lg font-bold")
-            warnings_label = ui.label("").classes("text-sm text-muted")
+            with ui.row().classes("w-full justify-between mt-4"):
+                quality_label = ui.label("Quality: N/A").classes("text-lg font-bold text-white")
+                warnings_label = ui.label("").classes("text-sm text-slate-300")
 
         current_output_path: Optional[Path] = None
 

@@ -9,7 +9,6 @@ import urllib.request
 from pathlib import Path
 
 from ..config import settings
-from ..converter import convert_file
 from ..database import create_project, get_connection, init_db
 from ..discovery import discover_files, discover_files_from_zip
 from ..jobs import get_job_queue, initialize_job_queue
@@ -155,6 +154,11 @@ def _format_output_root() -> str:
     return str(settings.output_root)
 
 
+def _queue_state_label() -> str:
+    """Summarize queue availability for the page header."""
+    return "Queue ready" if get_job_queue() else "Queue unavailable"
+
+
 def convert_page() -> None:
     """Render the convert page."""
     db_path = settings.workspace_root.parent / "markitdesk.db"
@@ -166,10 +170,10 @@ def convert_page() -> None:
     project_id = get_or_create_default_project_id(db_path)
     initialize_job_queue(settings)
 
-    status_label = ui.label().classes("mt-2")
-    output_status = ui.label("No imports yet").classes("text-sm text-muted")
-    recipe_hint = ui.label("No recipe selected").classes("text-sm text-muted")
-    dialog_message = ui.label("").classes("text-sm text-muted")
+    status_label = ui.label("Ready to import").classes("text-sm text-slate-300")
+    output_status = ui.label("No jobs queued yet").classes("text-sm text-slate-300")
+    recipe_hint = ui.label("No recipe selected").classes("text-sm text-slate-300")
+    dialog_message = ui.label("").classes("text-sm text-slate-300")
     url_input = None
     dialog = None
     import_upload = None
@@ -181,7 +185,7 @@ def convert_page() -> None:
 
     async def handle_upload(file_event):
         try:
-            status_label.text = "Processing uploads..."
+            status_label.text = "Indexing selected files..."
             files = [file_event] if hasattr(file_event, "content") else []
             status_label.text = process_uploaded_files(files, project_id)
             output_status.text = f"Outputs land in {_format_output_root()}"
@@ -201,65 +205,111 @@ def convert_page() -> None:
     def open_import_dialog():
         dialog.open()
 
-    with ui.column().classes("w-full max-w-6xl mx-auto p-6 gap-6"):
-        with ui.row().classes("w-full items-start justify-between gap-4"):
-            with ui.column().classes("gap-1"):
-                ui.label("Import and Convert").classes("text-3xl font-bold")
-                ui.label("Bring in local files, folders, ZIPs, or remote links and queue them for conversion.").classes("text-muted")
-            ui.button("Import files or links", on_click=open_import_dialog).props("color=primary")
+    with ui.element("div").classes("w-full min-h-screen").style(
+        "background:"
+        "radial-gradient(circle at top left, rgba(99,102,241,0.18), transparent 34%),"
+        "radial-gradient(circle at top right, rgba(16,185,129,0.14), transparent 26%),"
+        "linear-gradient(180deg, #0b1120 0%, #0f172a 38%, #111827 100%);"
+    ):
+        with ui.column().classes("w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 gap-6"):
+            with ui.card().classes("w-full p-6 sm:p-8 border border-white/10 shadow-2xl shadow-black/20").style(
+                "background: linear-gradient(135deg, rgba(15,23,42,.92), rgba(15,23,42,.72));"
+                "backdrop-filter: blur(18px);"
+            ):
+                with ui.row().classes("w-full items-start justify-between gap-6"):
+                    with ui.column().classes("gap-3 max-w-3xl"):
+                        with ui.row().classes("items-center gap-2 flex-wrap"):
+                            ui.badge("Local-first").props("color=green")
+                            ui.badge(_queue_state_label()).props("outline")
+                            ui.badge("URL gated").props("outline")
+                        ui.label("Import and Convert").classes("text-4xl sm:text-5xl font-black tracking-tight text-white")
+                        ui.label(
+                            "Drop in files, folders, ZIPs, or approved links. The import studio keeps discovery, queueing, and output visibility in one place."
+                        ).classes("text-base sm:text-lg text-slate-300 max-w-3xl")
+                        with ui.row().classes("items-center gap-3 flex-wrap mt-2"):
+                            ui.button("Open import studio", on_click=open_import_dialog).props("color=primary size=lg")
+                            ui.button("Refresh recipes", on_click=lambda: refresh_recipes(recipe_select)).props("outline color=white")
+                    with ui.card().classes("w-full sm:w-[20rem] p-4 border border-white/10").style(
+                        "background: rgba(15, 23, 42, .72); backdrop-filter: blur(18px);"
+                    ):
+                        ui.label("Live context").classes("text-sm font-semibold uppercase tracking-[0.2em] text-slate-400")
+                        with ui.column().classes("gap-3 mt-4"):
+                            _metric("Workspace", str(settings.workspace_root))
+                            _metric("Output", _format_output_root())
+                            _metric("Remote URLs", "Enabled" if settings.allow_remote_urls else "Disabled")
 
-        with ui.row().classes("w-full gap-4"):
-            with ui.card().classes("flex-1 p-5"):
-                ui.label("Conversion recipe").classes("text-lg font-semibold")
-                ui.label("Choose how the file should be discovered and processed before it enters the queue.").classes("text-sm text-muted mb-3")
-                with ui.row().classes("w-full items-center gap-3"):
-                    recipe_select = ui.select(options={}, label="Select a recipe", with_input=True, on_change=lambda e: handle_recipe_change(e.value)).classes("flex-1")
-                    ui.button("Refresh", on_click=lambda: refresh_recipes(recipe_select)).props("outline size=sm")
-                recipe_hint
+            with ui.row().classes("w-full gap-4 items-stretch"):
+                with ui.card().classes("flex-[1.25] p-5 border border-white/10").style(
+                    "background: linear-gradient(180deg, rgba(17,24,39,.94), rgba(15,23,42,.88));"
+                ):
+                    ui.label("Conversion recipe").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
+                    ui.label("Define how content is discovered before it enters the queue.").classes("text-lg text-white mt-1")
+                    with ui.row().classes("w-full items-center gap-3 mt-4"):
+                        recipe_select = ui.select(
+                            options={},
+                            label="Select a recipe",
+                            with_input=True,
+                            on_change=lambda e: handle_recipe_change(e.value),
+                        ).classes("flex-1")
+                        ui.button("Refresh", on_click=lambda: refresh_recipes(recipe_select)).props("outline")
+                    recipe_hint
 
-            with ui.card().classes("flex-1 p-5"):
-                ui.label("Output location").classes("text-lg font-semibold")
-                ui.label("Converted Markdown is written locally to the configured output directory.").classes("text-sm text-muted mb-3")
-                with ui.row().classes("items-center gap-2"):
-                    ui.icon("folder").classes("text-xl")
-                    ui.label(_format_output_root()).classes("font-mono text-sm")
-                output_status
-
-        with ui.card().classes("w-full p-5"):
-            ui.label("Status").classes("text-lg font-semibold mb-2")
-            status_label
+                with ui.card().classes("flex-[0.95] p-5 border border-white/10").style(
+                    "background: linear-gradient(180deg, rgba(15,23,42,.94), rgba(17,24,39,.88));"
+                ):
+                    ui.label("Output destination").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
+                    ui.label("Markdown output stays local and separate from raw input.").classes("text-lg text-white mt-1")
+                    with ui.row().classes("items-center gap-3 mt-4"):
+                        ui.icon("folder").classes("text-2xl text-emerald-400")
+                        ui.label(_format_output_root()).classes("font-mono text-sm text-slate-200 break-all")
+                    output_status
+                    ui.separator().classes("my-4 bg-white/10")
+                    ui.label("Status").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
+                    status_label
+                    ui.linear_progress(value=0.72).classes("w-full mt-3")
 
         dialog = ui.dialog()
         with dialog:
-            with ui.card().classes("w-[min(92vw,52rem)] p-5"):
-                with ui.row().classes("items-start justify-between w-full"):
-                    with ui.column().classes("gap-1"):
-                        ui.label("Import content").classes("text-2xl font-bold")
-                        ui.label("Choose a local file or queue a remote URL.").classes("text-sm text-muted")
+            with ui.card().classes("w-[min(92vw,58rem)] p-6 sm:p-7 border border-white/10").style(
+                "background: linear-gradient(180deg, rgba(15,23,42,.98), rgba(17,24,39,.96));"
+                "backdrop-filter: blur(18px);"
+            ):
+                with ui.row().classes("items-start justify-between w-full gap-4"):
+                    with ui.column().classes("gap-2"):
+                        ui.label("Import studio").classes("text-2xl sm:text-3xl font-black text-white")
+                        ui.label("One place to bring content in, choose a recipe, and queue it with the right guardrails.").classes("text-sm text-slate-300 max-w-2xl")
                     ui.button(icon="close", on_click=dialog.close).props("flat round")
 
-                with ui.tabs().classes("w-full mt-4") as tabs:
+                with ui.row().classes("gap-3 mt-5 flex-wrap"):
+                    ui.badge("Files / folders / ZIPs").props("color=primary")
+                    ui.badge("URL gate enforced").props("outline")
+                    ui.badge("Local workspace only").props("outline")
+
+                with ui.tabs().classes("w-full mt-5") as tabs:
                     files_tab = ui.tab("Files")
                     links_tab = ui.tab("Links")
 
                 with ui.tab_panels(tabs, value=files_tab).classes("w-full"):
                     with ui.tab_panel(files_tab):
-                        ui.label("Select files, folders, or ZIPs.").classes("text-sm text-muted mb-2")
+                        ui.label("Pick local content from the workspace boundary.").classes("text-sm text-slate-300 mb-3")
                         import_upload = ui.upload(
                             auto_upload=False,
                             multiple=True,
                             on_upload=lambda e: asyncio.create_task(handle_upload(e)),
                         ).classes("w-full")
-                        ui.label("Choose files in the picker, then queue them through the upload control.").classes("text-xs text-muted mt-2")
+                        ui.label("The uploaded file is discovered, validated, and queued automatically.").classes("text-xs text-slate-400 mt-2")
 
                     with ui.tab_panel(links_tab):
-                        ui.label("Remote URLs are disabled unless allowed in settings.").classes("text-sm text-muted mb-2")
+                        ui.label("Remote links are opt-in and remain disabled unless the app setting allows them.").classes("text-sm text-slate-300 mb-3")
                         if settings.allow_remote_urls:
                             url_input = ui.input("https://example.com/file").classes("w-full")
                             ui.button("Queue URL", on_click=lambda: asyncio.create_task(handle_url_ingest())).props("color=primary")
+                            ui.label("Only http and https URLs are accepted. The file downloads into the workspace before queueing.").classes("text-xs text-slate-400 mt-2")
                         else:
-                            url_input = ui.input("https://example.com/file").props("readonly").classes("w-full")
-                            ui.label("Remote URL ingestion is disabled in settings.").classes("text-sm text-warning")
+                            with ui.card().classes("w-full p-4 border border-amber-500/20").style("background: rgba(245,158,11,.08);"):
+                                ui.label("Remote URL ingestion is disabled in settings.").classes("text-sm font-semibold text-amber-300")
+                                ui.label("Enable `allow_remote_urls` to activate the URL form.").classes("text-xs text-amber-100/90 mt-1")
+                            url_input = ui.input("https://example.com/file").props("readonly").classes("w-full mt-3")
                         dialog_message
 
         refresh_recipes(recipe_select)
@@ -274,3 +324,10 @@ def refresh_recipes(recipe_select):
     recipe_select.set_options(options)
     if options and recipe_select.value not in options:
         recipe_select.set_value(list(options.keys())[0] if options else None)
+
+
+def _metric(label_text: str, value_text: str):
+    """Render a small headline metric block."""
+    with ui.column().classes("gap-1"):
+        ui.label(label_text).classes("text-[11px] uppercase tracking-[0.2em] text-slate-400")
+        ui.label(value_text).classes("text-sm text-slate-100 break-all")

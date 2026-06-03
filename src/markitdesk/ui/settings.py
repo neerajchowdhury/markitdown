@@ -8,40 +8,49 @@ from ..audit import log_audit_event
 
 def settings_page() -> None:
     """Render the settings page."""
-    with ui.column().classes('w-full max-w-4xl mx-auto p-4'):
-        ui.label('Settings').classes('text-2xl font-bold mb-4')
-        
-        with ui.card().classes('w-full mb-4'):
-            ui.label('Workspace Root').classes('mb-2')
-            with ui.row().classes('items-center'):
-                ui.icon('folder_open').classes('text-xl')
-                ui.input(value=str(settings.workspace_root), on_change=lambda e: None).props('readonly').classes('flex-1 ml-2')
-                ui.button('Change', on_click=lambda: ui.notify('Not implemented yet')).props('outline size=sm')
-        
-        with ui.card().classes('w-full mb-4'):
-            ui.label('Output Root').classes('mb-2')
-            with ui.row().classes('items-center'):
-                ui.icon('folder').classes('text-xl')
-                ui.input(value=str(settings.output_root), on_change=lambda e: None).props('readonly').classes('flex-1 ml-2')
-                ui.button('Change', on_click=lambda: ui.notify('Not implemented yet')).props('outline size=sm')
-        
-        with ui.card().classes('w-full mb-4'):
-            ui.label('Max File Size (MB)').classes('mb-2')
-            with ui.row().classes('items-center'):
-                ui.icon('storage').classes('text-xl')
+    with ui.column().classes("w-full max-w-7xl mx-auto p-6 gap-6"):
+        with ui.card().classes("w-full p-6 border border-white/10").style(
+            "background: linear-gradient(135deg, rgba(15,23,42,.92), rgba(15,23,42,.72));"
+        ):
+            with ui.row().classes("w-full items-start justify-between gap-4"):
+                with ui.column().classes("gap-2 max-w-3xl"):
+                    ui.label("Settings").classes("text-sm font-semibold uppercase tracking-[0.22em] text-slate-400")
+                    ui.label("Tune the local workspace and security posture.").classes("text-4xl font-black tracking-tight text-white")
+                    ui.label("The app stays local-first by default. These controls make the current security envelope explicit.").classes("text-base text-slate-300")
+                ui.badge("Security-sensitive").props("outline")
+
+        with ui.card().classes("w-full p-5 border border-white/10").style("background: rgba(15,23,42,.82);"):
+            ui.label("Workspace").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
+            _setting_row("Workspace Root", str(settings.workspace_root), "folder_open")
+            _setting_row("Output Root", str(settings.output_root), "folder")
+
+        with ui.card().classes("w-full p-5 border border-white/10").style("background: rgba(15,23,42,.82);"):
+            ui.label("Limits").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
+            with ui.row().classes("items-center gap-3 mt-3"):
+                ui.icon('storage').classes('text-xl text-slate-300')
+                ui.label('Max file size (MB)').classes('text-white')
                 ui.number(value=settings.max_file_mb, min=1, max=10000, on_change=lambda e: handle_max_file_size_change(e.value)).classes('ml-2 w-32')
-        
-        with ui.card().classes('w-full mb-4'):
-            ui.label('Features').classes('mb-2')
-            with ui.column().classes('space-y-2'):
+
+        with ui.card().classes("w-full p-5 border border-white/10").style("background: rgba(15,23,42,.82);"):
+            ui.label("Features").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
+            with ui.column().classes('space-y-3 mt-3'):
                 ui.switch('Enable plugins', value=settings.allow_plugins, on_change=lambda e: handle_plugins_change(e.value)).classes('text-sm')
-                ui.label('Plugins can execute code. Only enable if you trust the plugin source.').classes('text-xs text-muted mt-1')
-                
+                ui.label('Plugins can execute code. Only enable if you trust the plugin source.').classes('text-xs text-slate-400')
+
                 ui.switch('Enable remote URLs', value=settings.allow_remote_urls, on_change=lambda e: handle_remote_urls_change(e.value)).classes('text-sm')
-                ui.label('Allows processing files from the internet. May pose security risks.').classes('text-xs text-muted mt-1')
-                
+                ui.label('Allows processing files from the internet. May pose security risks.').classes('text-xs text-slate-400')
+
                 ui.switch('Enable AI enrichment', value=settings.allow_ai_enrichment, on_change=lambda e: handle_ai_enrichment_change(e.value)).classes('text-sm')
-                ui.label('Requires external AI services. Keeps raw output separate from enriched output.').classes('text-xs text-muted mt-1')
+                ui.label('Requires external AI services. Keeps raw output separate from enriched output.').classes('text-xs text-slate-400')
+
+
+def _setting_row(label_text, value_text, icon_name):
+    with ui.row().classes("items-center gap-3 mt-4"):
+        ui.icon(icon_name).classes("text-xl text-slate-300")
+        with ui.column().classes("flex-1 gap-1"):
+            ui.label(label_text).classes("text-sm text-white")
+            ui.input(value=value_text, on_change=lambda e: None).props('readonly').classes('w-full')
+        ui.button('Change', on_click=lambda: ui.notify('Not implemented yet')).props('outline size=sm')
 
 
 def handle_max_file_size_change(value):

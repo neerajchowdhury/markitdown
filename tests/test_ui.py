@@ -141,6 +141,25 @@ def test_preview_page_renders_without_running_event_loop(monkeypatch):
     preview_module.preview_page()
 
 
+def test_dashboard_page_renders_without_running_event_loop(monkeypatch):
+    """Dashboard page construction should not require an active asyncio loop."""
+    import markitdesk.ui.dashboard as dashboard_module
+
+    monkeypatch.setattr(dashboard_module, "ui", _FakeUI())
+
+    dashboard_module.dashboard_page()
+
+
+def test_settings_page_renders_without_running_event_loop(monkeypatch):
+    """Settings page construction should not require an active asyncio loop."""
+    import markitdesk.ui.settings as settings_module
+
+    monkeypatch.setattr(settings_module, "ui", _FakeUI())
+    monkeypatch.setattr(settings_module, "log_audit_event", lambda *args, **kwargs: None)
+
+    settings_module.settings_page()
+
+
 def test_convert_page_renders_and_wires_import_dialog(monkeypatch):
     """Convert page should render a clickable import action and dialog."""
     import markitdesk.ui.convert as convert_module
@@ -155,7 +174,7 @@ def test_convert_page_renders_and_wires_import_dialog(monkeypatch):
 
     convert_module.convert_page()
 
-    assert "Import files or links" in fake_ui.buttons
+    assert "Open import studio" in fake_ui.buttons
     assert fake_ui.dialogs
 
 
@@ -174,4 +193,4 @@ def test_convert_page_shows_url_gate_when_disabled(monkeypatch):
 
     convert_module.convert_page()
 
-    assert fake_ui.buttons["Import files or links"].callback is not None
+    assert fake_ui.buttons["Open import studio"].callback is not None
