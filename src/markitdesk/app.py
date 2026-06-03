@@ -13,6 +13,7 @@ from markitdesk.database import init_db
 from markitdesk.jobs import initialize_job_queue
 from markitdesk.ui.dashboard import dashboard_page
 from markitdesk.ui.convert import convert_page
+from markitdesk.ui.navigation import register_tabs
 from markitdesk.ui.queue import queue_page
 from markitdesk.ui.settings import settings_page
 from markitdesk.ui.preview import preview_page
@@ -59,12 +60,25 @@ def main() -> None:
             with ui.card().classes("w-full p-2 border border-white/10").style(
                 "background: rgba(15, 23, 42, .65); backdrop-filter: blur(12px);"
             ):
-                with ui.tabs().classes("w-full") as tabs:
-                    dashboard_tab = ui.tab('Dashboard')
-                    convert_tab = ui.tab('Convert')
-                    queue_tab = ui.tab('Queue')
-                    preview_tab = ui.tab('Preview')
-                    settings_tab = ui.tab('Settings')
+                with ui.column().classes("w-full gap-2"):
+                    ui.label("Workflow path").classes("text-[11px] uppercase tracking-[0.24em] text-slate-400 px-2")
+            with ui.tabs().classes("w-full") as tabs:
+                dashboard_tab = ui.tab('Dashboard')
+                convert_tab = ui.tab('Convert')
+                queue_tab = ui.tab('Queue')
+                preview_tab = ui.tab('Preview')
+                settings_tab = ui.tab('Settings')
+
+            register_tabs(
+                tabs,
+                {
+                    "Dashboard": dashboard_tab,
+                    "Convert": convert_tab,
+                    "Queue": queue_tab,
+                    "Preview": preview_tab,
+                    "Settings": settings_tab,
+                },
+            )
 
             with ui.tab_panels(tabs, value=dashboard_tab).classes("w-full"):
                 with ui.tab_panel(dashboard_tab):

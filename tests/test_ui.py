@@ -148,6 +148,18 @@ def test_dashboard_page_renders_without_running_event_loop(monkeypatch):
     monkeypatch.setattr(dashboard_module, "ui", _FakeUI())
 
     dashboard_module.dashboard_page()
+    assert dashboard_module._path_card is not None
+
+
+def test_dashboard_navigation_bridge_switches_tabs():
+    """Dashboard cards should switch the registered shell tab."""
+    from markitdesk.ui.navigation import register_tabs, navigate_to
+
+    tabs = SimpleNamespace(value=None)
+    register_tabs(tabs, {"Convert": "convert-tab"})
+
+    assert navigate_to("Convert") is True
+    assert tabs.value == "convert-tab"
 
 
 def test_settings_page_renders_without_running_event_loop(monkeypatch):
