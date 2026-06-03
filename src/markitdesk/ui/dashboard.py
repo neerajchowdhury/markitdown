@@ -23,6 +23,11 @@ def dashboard_page() -> None:
         with ui.card().classes("w-full p-5 border border-white/10").style("background: rgba(15,23,42,.82);"):
             ui.label("Start here").classes("text-sm font-semibold uppercase tracking-[0.18em] text-slate-400")
             ui.label("The shortest path from empty workspace to Markdown output is: import, queue, preview, export.").classes("text-base text-slate-300 mt-1")
+            with ui.row().classes("gap-3 mt-4 flex-wrap"):
+                ui.button("Open Convert", on_click=lambda: navigate_to("Convert")).props("color=primary")
+                ui.button("Open Queue", on_click=lambda: navigate_to("Queue")).props("outline")
+                ui.button("Open Preview", on_click=lambda: navigate_to("Preview")).props("outline")
+                ui.button("Open Settings", on_click=lambda: navigate_to("Settings")).props("outline")
             with ui.row().classes("w-full gap-4 mt-4 flex-wrap"):
                 _path_card("1", "Convert", "Import files, folders, ZIPs, or approved URLs.", "Open Convert")
                 _path_card("2", "Queue", "Watch jobs move through processing and recovery.", "Open Queue")

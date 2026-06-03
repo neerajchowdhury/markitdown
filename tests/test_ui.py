@@ -149,6 +149,7 @@ def test_dashboard_page_renders_without_running_event_loop(monkeypatch):
 
     dashboard_module.dashboard_page()
     assert dashboard_module._path_card is not None
+    assert "Open Convert" in dashboard_module.ui.buttons
 
 
 def test_dashboard_navigation_bridge_switches_tabs():
